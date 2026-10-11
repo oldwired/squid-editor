@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="dark" name="color-scheme"/>
+<title>SQUID project editor</title>
+<link href="styles.css" rel="stylesheet"/>
+<script defer="" src="project-format.js"></script>
+<script defer="" src="squid-hid.js"></script>
+<script defer="" src="hardware-tools.js"></script>
+<script defer="" src="number-controls.js"></script>
+<script defer="" src="example-project.js"></script>
+<script defer="" src="music.js"></script>
+<script defer="" src="generators.js"></script>
+<script defer="" src="edit-functions.js"></script>
+<script defer="" src="project-controls.js"></script>
+<script defer="" src="transform-tools.js"></script>
+<script defer="" src="drum-overlay.js"></script>
+<script defer="" src="value-chart.js"></script>
+<script defer="True" src="generator-plan.js"></script><script defer="True" src="generator-tools.js"></script><script defer="True" src="workbench.js"></script><script defer="" src="workspace-tools.js"></script>
+<script defer="" src="app.js"></script>
+<link href="workbench.css" rel="stylesheet"/></head>
+<body>
+<header class="toolbar">
+<div class="brand"><strong>SQUID</strong><span>Project editor</span></div>
+<label class="project-name-label">Project<input aria-label="Project name" id="project-name" maxlength="32" placeholder="Untitled project"/></label>
+<label class="tempo">BPM<input aria-label="Tempo in BPM" id="bpm" max="300" min="30" step=".1" type="number"/></label>
+<div class="history-tools">
+<button aria-label="Undo" id="undo" title="Undo (⌘/Ctrl Z)">↶</button>
+<button aria-label="Redo" id="redo" title="Redo (⌘/Ctrl Shift Z)">↷</button>
+</div>
+<nav aria-label="Project actions"><details class="action-menu" id="file-menu"><summary>File</summary><div aria-label="File actions" class="menu-items"><button id="new-project">New</button><button id="open-project">Open .prj</button><button id="midi-import">Import MIDI</button><button id="midi-export">Export MIDI</button></div></details>
+<button class="primary" id="save-project">Export .prj</button>
+</nav>
+<input accept=".prj" hidden="" id="file-input" type="file"/>
+</header><div class="status-bar"><span id="save-state" role="status">No changes</span><span class="status-spacer"></span><button aria-haspopup="dialog" id="midi-settings">MIDI input · Off</button><button id="session-settings" title="Local recovery settings">Recovery · Off</button><button aria-expanded="false" aria-haspopup="dialog" id="hardware-manager">SQUID · Not connected</button></div>
+<div class="validation-error" hidden="" id="validation-error" role="alert"><span id="validation-message"></span><button id="dismiss-invalid">Dismiss</button></div>
+<p class="file-warnings" hidden="" id="file-warnings" role="status"></p>
+<main class="workspace">
+<aside aria-label="Tracks" class="track-sidebar">
+<div class="sidebar-title">Tracks <span>16</span></div>
+<div class="track-list" id="track-list"></div>
+<div class="project-navigation"><button id="pattern-sets">Pattern sets…</button></div><div aria-label="Drum views" id="virtual-parts"></div></aside>
+<div class="editor-main">
+<section aria-label="Selected track" class="track-section">
+<div class="section-heading">
+<div class="track-heading"><span id="track-number">Track 01</span><label>Track name<input aria-label="Track name" id="track-name" maxlength="31"/></label></div>
+<span aria-label="Open track routing settings" class="route-summary" id="track-route" role="button" tabindex="0" title="Open track routing"></span>
+<div class="quick-track-flags"><label class="check-label"><input id="track-mute" type="checkbox"/>Mute</label><label class="check-label"><input id="track-solo" type="checkbox"/>Solo</label></div></div>
+</section>
+<section aria-label="Pattern bank" class="patterns-section">
+<div class="bank-heading">
+<div class="bank-navigation"><label>Pattern bank<select aria-label="Pattern bank range" id="bank-page"><option value="0">01–16</option><option value="1">17–32</option><option value="2">33–48</option><option value="3">49–64</option></select></label><label class="check-label"><input id="bank-overview" type="checkbox"/>All 64</label><small>◆ Starting pattern</small></div>
+<div class="pattern-actions">
+<button id="add-pattern">Add pattern</button>
+<details class="action-menu"><summary>Pattern actions</summary><div class="menu-items"><button id="duplicate-pattern">Duplicate</button><button id="transfer-pattern">Copy / move…</button><button id="delete-pattern">Delete pattern</button></div></details></div>
+</div>
+<div class="pattern-bank" id="pattern-bank"></div>
+</section>
+<section aria-label="Step sequencer" class="sequencer-section">
+<div class="sequencer-heading">
+<h1 id="pattern-label">Pattern 01</h1>
+<div class="view-controls"><label>View<select id="editor-view"><option value="track">Track</option></select></label><button id="create-drum-view">Create drum view…</button></div>
+<button id="generate-pattern">Generate</button><button id="transform-pattern">Shape values</button></div>
+<div aria-label="Stored playback settings" class="pattern-effects" id="pattern-effects"></div>
+<div class="sequencer-tools"><button aria-controls="details-inspector" aria-expanded="false" id="show-details">Edit step</button><button id="copy-step">Copy step</button><button id="paste-step">Paste step</button><button aria-pressed="false" id="piano-mode">Piano keys off</button><label class="check-label"><input id="piano-advance" type="checkbox"/>Advance after chord</label><span class="field-hint" hidden="" id="piano-status" role="status">A = C4 · Z/X change octave</span></div>
+<div class="grid-legend"><span><i class="legend-note"></i> Note <i class="legend-cc"></i> CC <i class="legend-velocity"></i> <span id="grid-velocity-label">Vel · slots 1–8 →</span> <i class="legend-gate"></i> Gate · gap = offset · › = next step</span><span id="grid-shortcuts">Space / Shift-click / right-click: toggle note 1 · Enter: edit</span></div>
+<div class="step-navigation"><button aria-label="Previous step page" id="previous-page">←</button><label>Steps<select id="step-page-select"></select></label><button aria-label="Next step page" id="next-page">→</button></div><div class="step-grid" id="step-grid"></div>
+<section aria-label="Virtual drum editor" class="drum-overlay" hidden="" id="drum-overlay"><div class="drum-heading"><strong id="drum-title"></strong><label>Page<select id="drum-page"><option value="0">1 · Steps 1–16</option><option value="1">2 · Steps 17–32</option><option value="2">3 · Steps 33–48</option><option value="3">4 · Steps 49–64</option></select></label><label>Cell click<select id="drum-interaction"><option value="draw">Draw hits</option><option value="select">Select steps</option></select></label></div><p class="field-hint" id="drum-help"></p><div class="drum-rows" id="drum-rows"></div></section>
+<div aria-label="Value lane" class="value-lane-toolbar"><button aria-pressed="false" id="lane-velocity">Velocity</button><button aria-pressed="false" id="lane-gate">Gate</button><button aria-pressed="false" id="lane-cc">CC</button><label class="check-label"><input checked id="show-value-chart" type="checkbox"/>Show lane</label></div>
+<section aria-label="Step value bars" class="value-chart" hidden="" id="value-chart">
+<div class="value-chart-controls">
+<label>Parameter<select id="value-lane"><option value="velocity">Velocity</option><option value="gate">Gate</option><option value="cc0">CC lane 1</option><option value="cc1">CC lane 2</option><option value="cc2">CC lane 3</option><option value="cc3">CC lane 4</option><option value="cc4">CC lane 5</option></select></label>
+<label id="value-target-control">Notes<select id="value-target"><option value="all">All active notes</option><option value="0">Note 1</option><option value="1">Note 2</option><option value="2">Note 3</option><option value="3">Note 4</option><option value="4">Note 5</option><option value="5">Note 6</option><option value="6">Note 7</option><option value="7">Note 8</option></select></label>
+<label hidden="" id="value-scale-control">Gate scale<select id="value-scale"><option value="auto">Auto</option><option value="1">1 step</option><option value="2">2 steps</option><option value="4">4 steps</option><option value="8">8 steps</option><option value="16">16 steps</option><option value="32">32 steps</option><option value="64">64 steps</option></select></label>
+<label>Selected value<input aria-label="Selected bar value" id="value-number" max="127" min="0" step="1" type="number"/></label>
+<span class="field-hint" id="value-chart-context"></span>
+</div>
+<p class="field-hint" id="value-chart-hint"></p>
+<div class="value-plot" id="value-plot"></div>
+<p class="field-hint" id="value-chart-status" role="status"></p>
+</section>
+<label class="stored-steps-toggle" id="stored-steps-control"><input id="show-stored-steps" type="checkbox"/>Show stored steps beyond length</label>
+<div class="empty-state" hidden="" id="empty-pattern"><h2 id="empty-pattern-label">Pattern 01 is empty</h2><p>Create a pattern in this slot.</p><button class="primary" id="empty-add">Create pattern</button></div>
+</section>
+</div>
+<aside aria-label="Editing details" class="inspector" id="details-inspector"><div class="details-top"><div aria-label="Editing detail" role="tablist"><button aria-controls="details-step" aria-selected="true" id="details-tab-step" role="tab">Step</button><button aria-controls="details-pattern" aria-selected="false" id="details-tab-pattern" role="tab" tabindex="-1">Pattern</button><button aria-controls="details-track" aria-selected="false" id="details-tab-track" role="tab" tabindex="-1">Track</button></div><button aria-label="Close editing details" id="close-details">×</button></div><section aria-labelledby="details-tab-step" class="details-panel" id="details-step" role="tabpanel">
+<div class="inspector-heading"><span id="inspector-location">Track 01 / Pattern 01</span><h2>Step <span id="step-number">01</span></h2><p hidden="" id="step-length-note">Outside pattern length</p></div>
+<div id="step-inspector">
+<div class="inspector-subheading"><span>Notes</span><small id="polyphony-count">0 / 8</small></div>
+<div class="notes-column-head"><span>On</span><span>Note</span><span>Vel.</span><span>Gate</span><span>Offset</span></div>
+<div class="notes-list" id="notes-list"></div>
+<label class="check-label notes-toggle"><input id="show-all-notes" type="checkbox"/>Show all eight note slots</label>
+<p class="field-hint">Gate is in steps; 1.000 reaches the next step. Offset delays a note by sixths of a step. Enter advances while keeping the same field.</p>
+<details class="advanced-step"><summary>Step controls &amp; automation</summary><div class="inspector-subheading">Step settings</div>
+<div class="step-properties">
+<label class="check-label"><input id="step-enabled" type="checkbox"/>Step active</label>
+<label class="check-label"><input id="step-slide" type="checkbox"/>CV Slide</label>
+<label class="check-label"><input id="step-tie" type="checkbox"/>Tie from previous step</label>
+<label>Harmonizer<select aria-label="Step harmonizer" id="step-harmonizer"></select></label>
+<label>Count<select aria-label="Step count" id="step-count"></select></label>
+<label>Divide<select aria-label="Step divide" id="step-divide"></select></label>
+</div>
+<div class="inspector-subheading"><span>CC values</span><small>0–127</small></div>
+<div class="cc-list" id="cc-list"></div>
+<p class="field-hint">CC assignments are in track routing settings.</p>
+<label class="transpose-label">Transpose automation<select aria-label="Transpose automation" id="step-transpose"></select></label>
+<details class="automation-details"><summary>Speed, roll and Groove Bend</summary><label>Speed control<select id="step-speedControl"></select></label><label>Rhythmic roll<select id="step-roll"></select></label><p class="field-hint">Groove Bend samples at sixths of this step (−64 to +63; 0 is centered).</p><div class="groove-samples" id="groove-samples"></div><button id="clear-automation">Clear step automation</button></details>
+<button class="clear-step" id="clear-step">Clear selected step</button>
+<p class="field-hint" id="step-automation-note"></p>
+<p class="preservation-note">Unedited settings are preserved.</p>
+</details></div>
+<div class="empty-inspector" hidden="" id="empty-inspector">Add a pattern to edit its steps.</div>
+</section><section aria-labelledby="details-tab-pattern" class="details-panel" hidden="" id="details-pattern" role="tabpanel"><h2>Pattern setup</h2><div class="pattern-controls">
+<label>Length<select aria-label="Pattern length" id="pattern-pages"><option value="1">16 steps</option><option value="2">32 steps</option><option value="3">48 steps</option><option value="4">64 steps</option></select></label>
+<label>Speed<select aria-label="Pattern speed" id="pattern-speed"><option value="0">×0.25</option><option value="1">×0.5</option><option value="2">×1</option><option value="3">×1.5</option><option value="4">×2</option></select></label>
+<label>Direction<select aria-label="Running direction" id="pattern-direction"></select></label>
+</div><p class="field-hint" hidden="" id="speed-note">Pattern speed editing requires seq3.</p><details class="pattern-settings" id="pattern-settings" open=""><summary>Musical settings</summary>
+<div class="settings-grid">
+<label class="check-label"><input id="fx-fixed" type="checkbox"/>Fixed length</label><label>Fixed length (steps)<input aria-label="Fixed length (steps)" id="fx-fixedSteps" max="64" min="1" type="number"/></label>
+<label class="check-label"><input id="fx-probability" type="checkbox"/>Trigger probability</label><label>Probability (%)<input aria-label="Probability (%)" id="fx-rate" max="100" min="0" type="number"/></label>
+<label>Swing (%)<input aria-label="Swing (%)" id="fx-swing" max="100" min="0" type="number"/></label><label>Scale<select id="fx-scale"></select></label><label>Key<select id="fx-key"></select></label>
+<label class="check-label"><input id="fx-reverse" type="checkbox"/>Reverse</label><label class="check-label"><input id="fx-switchBack" type="checkbox"/>Switch Back</label>
+</div>
+<h3>Speed modulation</h3><div class="settings-grid"><label>Shape<select id="fx-modShape"></select></label><label>Cycle (steps)<input aria-label="Cycle (steps)" id="fx-modLength" max="64" min="2" type="number"/></label><label>Depth<input aria-label="Depth" id="fx-modDepth" max="63" min="-64" type="number"/></label></div>
+<h3>Arpeggiator</h3><div class="settings-grid"><label class="check-label"><input id="fx-arp" type="checkbox"/>Enabled</label><label>Rate<select id="fx-arpRate"></select></label><label>Style<select id="fx-arpStyle"></select></label><label>Range<select id="fx-arpOctaves"><option value="1">1 octave</option><option value="2">2 octaves</option><option value="3">3 octaves</option></select></label><label>Gate (%)<input aria-label="Gate (%)" id="fx-arpGate" max="100" min="1" type="number"/></label></div>
+</details></section><section aria-labelledby="details-tab-track" class="details-panel" hidden="" id="details-track" role="tabpanel"><h2>Track setup</h2><label class="track-color-label">Color<span class="color-control"><span aria-hidden="true" class="color-swatch" id="track-color-swatch"></span><select aria-label="Track color" id="track-color"></select></span></label><div class="track-flags"><label class="check-label"><input id="track-mono" type="checkbox"/>Mono (Note 1 only)</label><label class="starting-pattern-label">Starting pattern<select aria-label="Track starting pattern" id="track-start-pattern" title="Pattern selected when this project is loaded on the SQUID"></select></label><button id="set-start-pattern">Use viewed pattern</button><span class="field-hint" hidden="" id="track-start-note"></span></div><details class="routing-details" open="">
+<summary>Routing and program changes</summary>
+<div class="routing-controls">
+<label>Output<select aria-label="Track output" id="track-port"></select></label>
+<label>Channel<select aria-label="MIDI channel" id="track-channel"></select></label>
+<label>Delay (ms)<input aria-label="Track delay" id="track-delay" max="63" min="0" type="number"/></label>
+<label>Bank MSB<input aria-label="Bank MSB" id="bank-msb" max="127" min="0" placeholder="Off" type="number"/></label>
+<label>Bank LSB<input aria-label="Bank LSB" id="bank-lsb" max="127" min="0" placeholder="Off" type="number"/></label>
+<label>Program<input aria-label="Program change" id="program" max="127" min="0" placeholder="Off" type="number"/></label>
+</div>
+<div class="cc-assignments">
+<label>CC lane 1<input aria-label="CC lane 1" id="track-cc-0" max="127" min="0" type="number"/></label>
+<label>CC lane 2<input aria-label="CC lane 2" id="track-cc-1" max="127" min="0" type="number"/></label>
+<label>CC lane 3<input aria-label="CC lane 3" id="track-cc-2" max="127" min="0" type="number"/></label>
+<label>CC lane 4<input aria-label="CC lane 4" id="track-cc-3" max="127" min="0" type="number"/></label>
+<label>CC lane 5<input aria-label="CC lane 5" id="track-cc-4" max="127" min="0" type="number"/></label>
+</div>
+<p class="field-hint" hidden="" id="routing-note">Routing controls require V3 track settings.</p>
+</details><details class="harmonizer-details"><summary>Harmonizer chords</summary><p class="field-hint">Six track chords. Root is always included; add up to four semitone intervals (0 leaves a slot unused). Assign a chord in Step settings.</p><div class="harmonizer-chords" id="harmonizer-chords"></div></details></section></aside>
+</main>
+<footer><details class="technical-details"><summary>File details</summary><span id="file-status"></span><p>Gate display = (stored value + 1) / 8 steps. Conversion is inferred from the SQUID manual and exported defaults. Unusual stored offset masks are preserved until edited.</p></details><button id="help-button">Help / keys</button></footer>
+<section aria-labelledby="note-panel-title" class="note-panel" hidden="" id="note-panel" role="dialog">
+<div class="dialog-heading"><h2 id="note-panel-title">Step notes</h2><button aria-label="Close step note panel" id="close-note-panel">×</button></div>
+<div class="notes-column-head"><span>On</span><span>Note</span><span>Vel.</span><span>Gate</span><span>Offset</span></div>
+<div id="panel-notes"></div><p class="field-hint">Enter / Shift+Enter: next / previous step · Alt+P/V/L: pitch / velocity / gate · Tab: next field · Escape: return to grid. Edits also appear in the right inspector.</p>
+</section>
+<div aria-live="polite" id="toast" role="status"></div>
+<div class="drop-overlay" hidden="" id="drop-overlay"><span>Open .prj</span><small>Drop a SQUID project</small></div>
+<dialog id="help-dialog">
+<div class="dialog-heading"><h2>Using the editor</h2><button aria-label="Close help" id="close-help">×</button></div>
+<p>Open a SQUID Manager .prj export or create a project. Select a track and pattern, then edit each step’s notes, velocity, gate, CC values and transpose automation. Up to eight notes fit in a step.</p>
+<p>Use Pattern sets to capture, edit or recall scenes across tracks. Musical settings edits fixed length, swing, probability, scale, modulation and arpeggiator settings. Track harmonizer chords and step ties, chord assignments, speed, roll and Groove Bend have their own controls. Interpolate / randomize previews an edit before applying it; undo restores the previous project.</p>
+<table class="shortcut-table"><tbody>
+<tr><td>Arrows / Home / End</td><td>Navigate tracks, patterns and steps</td></tr>
+<tr><td>Alt 1 / 2 / 3 / 4</td><td>Focus tracks / patterns / steps / notes</td></tr>
+<tr><td>Space / Enter / Escape</td><td>Toggle note 1 / open notes / close panel</td></tr>
+<tr><td>Tab on a step</td><td>Edit its pitch in the inspector</td></tr>
+<tr><td>Enter / Shift+Enter in notes</td><td>Commit and move to next / previous step</td></tr>
+<tr><td>Alt ← / →</td><td>Change step, keeping the note field</td></tr>
+<tr><td>P / V / L · Alt P / V / L in fields</td><td>Focus pitch / velocity / gate length</td></tr>
+<tr><td>Shift ↑ / ↓ in note numbers</td><td>Pitch ± octave · velocity ±10 · gate ±1 step</td></tr>
+<tr><td>⌘/Ctrl C / V</td><td>Copy / paste step</td></tr>
+<tr><td>⌘/Ctrl Shift C / V</td><td>Copy / paste pattern across tracks (empty slot)</td></tr>
+<tr><td>⌘/Ctrl D · N</td><td>Duplicate pattern · create pattern</td></tr>
+<tr><td>⌘/Ctrl S / O / Z / Shift Z</td><td>Export / open / undo / redo</td></tr>
+<tr><td>Delete / Backspace</td><td>Clear step; a single-track drum view clears only the selected note lane</td></tr>
+<tr><td>G / I / M</td><td>Generate / import MIDI / export MIDI</td></tr>
+<tr><td>` · A W S E D F T G Y H U J K</td><td>Toggle piano typing · chromatic notes</td></tr>
+<tr><td>Z / X (piano mode)</td><td>Octave down / up; release chord to enter it</td></tr>
+</tbody></table>
+<p>In note fields, Up/Down adjusts the number and Left/Right moves the text cursor. Tab follows pitch, velocity, gate and offset; Escape returns to the selected step. Editing an empty note's pitch enables it. Enable Advance after chord for piano typing. Export a .prj copy and check it arrived in Downloads. Enable local autosave under Recovery for recovery after a reload.</p>
+<button id="example-project">Open editor example</button>
+<button id="help-done">Close</button>
+</dialog>
+<dialog id="transfer-dialog"><div class="dialog-heading"><h2>Copy or move pattern</h2><button aria-label="Close pattern transfer" id="close-transfer">×</button></div><div class="form-grid"><label>Destination track<select id="transfer-track"></select></label><label>Pattern slot<input aria-label="Pattern slot" id="transfer-slot" max="64" min="1" type="number" value="1"/></label><label>Operation<select id="transfer-mode"><option value="copy">Copy</option><option value="move">Move</option></select></label></div><p>Choose an empty destination. All pattern settings and automation travel with the pattern.</p><p id="transfer-error" role="alert"></p><button class="primary" id="apply-transfer">Apply</button></dialog>
+<dialog id="drum-group-dialog">
+<div class="dialog-heading"><h2>Group tracks as drums</h2><button aria-label="Close drum grouping" id="close-drum-group">×</button></div>
+<label>Virtual drum group<input aria-label="Virtual drum group" id="drum-group-number" max="99" min="1" type="number" value="1"/></label>
+<p>Names such as dr1_kick and dr1_snare join group 1. dr2_* joins group 2. Each row uses its original SQUID track and notes.</p>
+<div class="choice-list" id="drum-group-tracks"></div>
+<label class="check-label" id="drum-normalise-choice"><input checked id="drum-normalise-new" type="checkbox"/>Normalise routing / program settings to the first participating track</label>
+<p class="field-hint">Copies output, MIDI channel, delay, bank MSB/LSB, program and five CC assignments. The first participating track is the lowest-numbered member.</p>
+<p class="field-hint" id="drum-normalise-preview"></p>
+<pre class="preview" id="drum-group-preview"></pre>
+<div class="dialog-actions"><button hidden="" id="normalise-drum-group">Normalise routing / program settings</button><button class="primary" id="apply-drum-group">Apply names and open drum view</button></div>
+<p id="drum-normalise-status" role="status"></p>
+</dialog>
+<dialog id="export-midi-dialog"><div class="dialog-heading"><h2>Export MIDI</h2><button aria-label="Close MIDI export" id="close-export-midi">×</button></div><div aria-label="MIDI export scope" class="scope-options" role="group"><button aria-pressed="true" id="export-scope-pattern">Selected pattern</button><button aria-pressed="false" id="export-scope-snapshot">Track snapshot</button><button aria-pressed="false" id="export-scope-bank">Entire bank · ZIP</button></div><label hidden="">Scope<select id="export-scope"><option value="pattern">Selected pattern</option><option value="snapshot">16-track snapshot</option><option value="bank">Entire bank (ZIP of MIDI files)</option></select></label><div class="mapping-list" hidden="" id="snapshot-tracks"></div><p>Exports stored active notes, offsets, gates, velocity, assigned CCs, channel and project tempo on a straight sixteenth-note grid. Running direction, pattern speed, swing, scale, arpeggiator, probability, count/divide, transpose and other performance effects are shown in the editor but are not rendered into MIDI.</p><p id="export-midi-error" role="alert"></p><button class="primary" id="apply-export-midi">Export MIDI</button></dialog>
+<input accept=".mid,.midi" hidden="" id="midi-file-input" type="file"/>
+<dialog class="wide-dialog" id="import-midi-dialog"><div class="dialog-heading"><h2>Import MIDI</h2><button aria-label="Close MIDI import" id="close-import-midi">×</button></div><p id="midi-source-summary"></p><div class="mapping-heading"><span>Source · channel</span><span>Destination track</span><span>First slot</span></div><div class="mapping-list" id="import-mappings"></div><div class="form-grid"><label>First step (1-based)<input aria-label="First step (1-based)" id="import-start" min="1" type="number" value="1"/></label><label>Last step (inclusive)<input aria-label="Last step (inclusive)" id="import-end" min="1" type="number" value="64"/></label><label>Note timing<select id="import-quantize"><option value="sixth">Nearest sixth of a step</option><option value="step">Nearest step</option></select></label></div><div class="choice-list"><label class="check-label"><input checked id="import-split" type="checkbox"/>Split into consecutive patterns (up to 64 steps each)</label><label class="check-label"><input id="import-overwrite" type="checkbox"/>Replace occupied destination patterns</label><label class="check-label"><input id="import-cc" type="checkbox"/>Include CCs (must match destination assignments)</label><label class="check-label"><input id="import-tempo" type="checkbox"/>Use file tempo for project</label><label class="check-label"><input id="import-channel" type="checkbox"/>Use source MIDI channels for destination tracks</label></div><div aria-label="Prospective pattern destinations" class="import-bank-preview" id="import-bank-preview"></div><pre class="preview" id="import-preview" role="status"></pre><button class="primary" disabled="" id="apply-import-midi">Apply import</button></dialog>
+<dialog class="wide-dialog" id="generator-dialog"><div class="dialog-heading"><h2 id="generator-title">Generate pattern</h2><button aria-label="Close generator" id="close-generator">×</button></div><p class="dialog-context" id="generator-context"></p><label>Starting preset<select id="gen-preset"></select></label><p class="field-hint" id="gen-preset-description"></p><section hidden="" id="generator-lane-section"><div class="scope-heading"><h3 id="generator-scope-title">Participating lanes</h3><button id="gen-selected-lane">Selected only</button><button id="gen-all-lanes">All lanes</button></div><div id="generator-lanes"></div></section><div class="form-grid generator-form">
+<label>Rhythm<select id="gen-rhythm"><option value="euclidean">Euclidean</option><option value="polyrhythm">Polyrhythm</option><option value="pulse">Regular pulse</option><option value="tresillo">Tresillo (3+3+2)</option><option value="random">Probability</option></select></label>
+<label data-melodic="">Pitch / harmony<select id="gen-melody"><option value="walk">Melodic walk</option><option value="root">Single pitch / drums</option><option value="bass">Progression bassline</option><option value="motif">Repeating motif</option><option value="arp">Arpeggio</option><option value="chords">Chord progression</option><option value="voice-leading">Chords with voice leading</option><option value="random">Random scale notes</option></select></label>
+<label data-melodic="">Scale<select id="gen-scale"><option value="minor">Minor</option><option value="major">Major</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="pentatonic">Major pentatonic</option><option value="blues">Blues</option><option value="chromatic">Chromatic</option></select></label>
+<label>Rhythm length (steps)<input aria-label="Rhythm length (steps)" id="gen-length" max="64" min="1" type="number" value="16"/></label><label>Hits / density<input aria-label="Hits / density" id="gen-pulses" max="64" min="0" type="number" value="5"/></label><label data-melodic="">Root (MIDI pitch)<span class="root-input"><input aria-label="Root (MIDI pitch)" id="gen-root" max="127" min="0" type="number" value="48"/><output aria-live="polite" for="gen-root" id="gen-root-name">C3</output></span></label><label data-melodic="">Pitch span (semitones)<input aria-label="Pitch span (semitones)" id="gen-span" max="48" min="0" type="number" value="24"/></label><label>Gate (steps)<input aria-label="Gate (steps)" id="gen-gate" max="64" min=".125" step=".125" type="number" value="1"/></label><label>Velocity<input aria-label="Velocity" id="gen-velocity" max="127" min="1" type="number" value="100"/></label>
+</div><details class="generator-more"><summary>More options · timing, variation &amp; locks</summary><div class="form-grid"><label>Pulse period<input aria-label="Pulse period" id="gen-period" max="64" min="1" type="number" value="3"/></label><label>Second period<input aria-label="Second period" id="gen-period2" max="64" min="1" type="number" value="4"/></label><label>Beat accent<input aria-label="Beat accent" id="gen-accent" max="64" min="0" type="number" value="12"/></label><label>Velocity variation ±<input aria-label="Velocity variation ±" id="gen-humanize" max="32" min="0" type="number" value="0"/></label><label>Rotate (steps)<input aria-label="Rotate (steps)" id="gen-rotation" max="64" min="-64" type="number" value="0"/></label><label>Progression (degrees)<input id="gen-progression" value="1,6,4,5"/></label><label>Random seed<input id="gen-seed" value="1"/></label><label>New hit offset (sixths)<input aria-label="Generated note offset in sixths" id="gen-offset" max="5" min="0" type="number" value="0"/></label></div><div class="choice-list"><label class="check-label"><input id="gen-invert" type="checkbox"/>Invert pitches around root</label><label class="check-label"><input id="gen-reverse" type="checkbox"/>Reverse rhythm</label><label class="check-label"><input id="gen-lock-rhythm" type="checkbox"/>Keep current rhythm</label><label class="check-label"><input id="gen-lock-pitch" type="checkbox"/>Keep current pitches where present</label><label class="check-label"><input id="gen-lock-articulation" type="checkbox"/>Keep current velocity, gate and offset where present</label></div></details><div class="form-grid"><label id="generator-track-destination">Destination track<select id="gen-track"></select></label><label>Pattern slot<input aria-label="Pattern slot" id="gen-slot" max="64" min="1" type="number" value="1"/></label><label>Apply mode<select id="gen-mode"><option value="replace">Replace in rhythm range</option><option value="merge">Merge · retain existing lane hits</option><option value="new">New pattern in empty slot</option></select></label></div><div class="choice-list generator-impact"><label class="check-label"><input id="gen-enable-skipped" type="checkbox"/>Enable skipped destination steps (also activates their other notes and CC)</label><label class="check-label"><input id="gen-change-length" type="checkbox"/>Set destination length to rhythm length (affects all notes on each track)</label><label class="check-label" id="gen-replace-pitch-control"><input id="gen-replace-pitch" type="checkbox"/>Replace existing lane pitches with the chosen pitch</label></div><label class="preview-page-control">Preview steps<select id="gen-preview-page"><option value="0">01–16</option></select></label><div aria-label="Generated pattern preview" class="rhythm-preview" id="generator-visual"></div><pre class="preview result-summary" id="generator-preview" role="status"></pre><div class="dialog-actions"><button id="gen-reroll">New seed</button><button id="gen-audition">Audition</button><button id="gen-stop">Stop</button><button class="primary" id="apply-generator">Apply pattern</button></div></dialog>
+<dialog id="session-dialog"><div class="dialog-heading"><h2>Local recovery</h2><button aria-label="Close session settings" id="close-session">×</button></div><label class="check-label"><input id="autosave-enabled" type="checkbox"/>Autosave this session locally</label><p>Stores project bytes in this browser. Restore is offered on the next visit. A project export is still your portable copy.</p><p id="autosave-status" role="status"></p><button id="clear-autosave">Delete local recovery copy</button></dialog>
+<dialog id="restore-dialog"><div class="dialog-heading"><h2>Restore local session?</h2></div><p id="restore-summary"></p><button class="primary" id="restore-session">Restore</button><button id="discard-session">Discard recovery copy</button><button id="later-session">Keep copy, start without restoring</button></dialog>
+<dialog class="wide-dialog" id="pattern-sets-dialog">
+<div class="dialog-heading"><h2>Pattern sets</h2><button aria-label="Close pattern sets" id="close-pattern-sets">×</button></div>
+<p>Each set stores one pattern and a mute state per track. Choose a set, then edit its entries. Every change is undoable. Recall selects its patterns in the editor and applies its mute states.</p>
+<div aria-label="Pattern sets" class="scene-bank" id="scene-bank"></div><div aria-label="Pattern set overview" class="scene-overview" id="scene-overview"></div>
+<div class="scene-toolbar"><strong id="scene-title"></strong><button id="capture-scene">Capture current track selections</button><button id="recall-scene">Recall in editor</button><button id="delete-scene">Clear set</button></div>
+<label class="check-label" hidden="" id="scene-drum-capture-control"><input checked id="scene-drum-capture" type="checkbox"/>Capture one pattern slot per drum group</label>
+<p class="field-hint" hidden="" id="scene-drum-help">The selected member supplies its group's slot; other groups use their first member's selection. Missing patterns remain unassigned. Group controls change all members; expand Individual tracks for overrides.</p>
+<div class="scene-entries" id="scene-entries"></div>
+<div class="dialog-actions"><label>Copy to empty set<select id="scene-copy-destination"></select></label><button id="copy-scene">Copy set</button></div><p id="scene-status" role="status"></p>
+</dialog>
+<dialog class="wide-dialog" id="transform-dialog">
+<div class="dialog-heading"><h2>Interpolate / randomize</h2><button aria-label="Close pattern transform" id="close-transform">×</button></div>
+<div class="form-grid"><label>Operation<select id="transform-operation"><option value="interpolate">Interpolate between anchors</option><option value="randomize">Randomize within a range</option></select></label><label>Parameter<select id="transform-parameter"><option value="pitch">Pitch (Note 1)</option><option value="gate">Gate (all active notes)</option><option value="velocity">Velocity (all active notes)</option><option value="cc0">CC lane 1</option><option value="cc1">CC lane 2</option><option value="cc2">CC lane 3</option><option value="cc3">CC lane 4</option><option value="cc4">CC lane 5</option><option value="active">Step active / skipped</option></select></label><label>Step order<select id="transform-order"><option value="direction">Stored running direction</option><option value="numeric">Numerical step order</option></select></label></div>
+<div id="interpolation-controls"><div class="anchor-controls" id="transform-anchor-controls"></div><p class="field-hint">Steps use their grid numbers. Pitch is MIDI 0–127; gate is in steps (0.125–64); velocity and CC are 0–127. The outer anchors bound the edited region.</p><button id="transform-add-anchor">Add anchor</button><details><summary>Exact anchor coordinates</summary><label>Anchors (step:value, two to five points)<input id="transform-anchors" value="1:60, 16:72"/></label></details></div>
+<div hidden="" id="randomizer-controls"><div class="form-grid"><label>First step<input aria-label="First step" id="transform-start" max="64" min="1" type="number" value="1"/></label><label>Last step<input aria-label="Last step" id="transform-end" max="64" min="1" type="number" value="16"/></label><label>Minimum<input aria-label="Minimum" id="transform-min" step=".125" type="number" value="48"/></label><label>Maximum<input aria-label="Maximum" id="transform-max" step=".125" type="number" value="72"/></label><label>Active probability (%)<input aria-label="Active probability (%)" id="transform-chance" max="100" min="0" type="number" value="50"/></label><label>Seed<input id="transform-seed" value="1"/></label></div><label class="check-label"><input checked id="transform-scale" type="checkbox"/>Use the pattern's scale and key for random pitches</label></div>
+<div class="choice-list"><label class="check-label"><input id="transform-fill" type="checkbox"/>Add Note 1 on empty steps / enable new CC values</label><label class="check-label"><input checked id="transform-reset-offset" type="checkbox"/>Reset affected note offsets to 0 (device-style interpolation)</label></div>
+<p class="field-hint">Before · gray / Preview · green. Drag the anchor dots vertically, or focus one and use ↑ / ↓.</p><div aria-label="Before and after values" class="transform-visual" id="transform-visual"></div><pre class="preview" id="transform-preview" role="status"></pre><div class="dialog-actions"><button id="transform-reroll">New seed</button><button class="primary" disabled="" id="apply-transform">Apply</button></div>
+</dialog>
+<dialog aria-labelledby="hardware-title" class="hardware-dialog" id="hardware-dialog">
+<div class="dialog-heading"><h2 id="hardware-title">SQUID projects</h2><button aria-label="Close SQUID projects" id="close-hardware">×</button></div>
+<div class="hardware-connection"><button id="hardware-connect">Connect</button><button disabled="" id="hardware-refresh">Refresh</button><button disabled="" id="hardware-disconnect">Disconnect</button><span class="field-hint" id="hardware-capacity"></span></div>
+<p aria-live="polite" class="field-hint" id="hardware-status" role="status"></p>
+<progress aria-label="Project transfer progress" hidden="" id="hardware-progress"></progress>
+<div aria-label="Projects stored on SQUID" class="hardware-projects" id="hardware-projects" role="group"></div>
+<div class="hardware-actions"><button disabled="" id="hardware-open">Read into editor</button><button disabled="" id="hardware-save">Download backup</button><button hidden="" id="hardware-cancel">Cancel transfer</button></div>
+<div class="hardware-send-section"><h3>Editor → SQUID</h3><button disabled="" id="hardware-review-send">Send editor project…</button><div hidden="" id="hardware-send-review"><p id="hardware-send-summary"></p><p class="field-hint">The SQUID chooses the destination using its project-load operation. Keep it connected until it confirms the save.</p><button class="primary" disabled="" id="hardware-send">Send project to SQUID</button></div></div>
+</dialog>
+<dialog id="create-drum-dialog"><div class="dialog-heading"><h2>Create a drum view</h2><button aria-label="Close drum creation" id="close-create-drum">×</button></div><p>Choose how to arrange your sounds. Your notes and routing stay editable in the project.</p><div class="drum-choices"><section><h3>Eight notes on this track</h3><p>One SQUID track, eight fixed note lanes. Shared routing and pattern settings.</p><button id="split-drums" title="Add DR_ to this track name and edit its eight note slots as drum lanes">Use eight note lanes</button></section><section><h3>Combine existing tracks</h3><p>One row per participating track. Coordinate their pattern slots and routing.</p><button id="group-drums">Choose participating tracks</button></section></div><details><summary>How drum views are stored</summary><p>The editor uses a DR_ track-name prefix for eight note lanes, or dr1_, dr2_ and so on for groups. These names travel with your .prj file.</p></details></dialog><dialog id="midi-dialog"><div class="dialog-heading"><h2>MIDI keyboard input</h2><button aria-label="Close MIDI input" id="close-midi-settings">×</button></div><h3>MIDI keyboard</h3><button id="connect-midi">Connect MIDI input</button><div class="form-grid"><label>Input<select id="midi-device"></select></label><label>Channel<select id="midi-input-channel"><option value="all">All channels</option></select></label></div><div class="choice-list"><label class="check-label"><input id="midi-armed" type="checkbox"/>Enter chords into selected step</label><label class="check-label"><input id="midi-advance" type="checkbox"/>Advance after releasing the chord</label></div><p id="midi-input-status" role="status">Connect an input, then arm note entry.</p></dialog><dialog id="welcome-dialog"><div class="dialog-heading"><h2>Your next SQUID project</h2><button aria-label="Continue in the editor" id="close-welcome">×</button></div><p>Edit patterns, shape a groove, and organise the project for your SQUID.</p><div class="welcome-actions"><button class="primary" id="welcome-new">New project</button><button id="welcome-open">Open .prj file</button><button id="welcome-device">Read from SQUID</button></div><button id="welcome-demo">Explore the editor example</button><p class="field-hint">Projects stay on this computer. Enable Recovery to keep an edited copy across reloads.</p></dialog></body>
+</html>
