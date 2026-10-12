@@ -11,3 +11,4 @@ __pycache__/
 *.prj
 /analysis/
 /project-editor/example-data.js
+/_site/

@@ -1,9 +1,15 @@
 # TORAIZ SQUID browser editor
 
-A local browser editor for SQUID Manager `.prj` files. Edit projects, generate
+A browser editor for SQUID Manager `.prj` files. Edit projects, generate
 patterns, import/export MIDI, and transfer projects directly over WebHID.
 
-## Run
+## Use the editor
+
+Open **[the online editor](https://oldwired.github.io/squid-editor/)**. No
+installation is required. Files stay local in your browser. Direct USB transfers
+require Chrome/Chromium.
+
+## Run locally
 
 From this repository:
 
@@ -36,6 +42,10 @@ Tests use synthetic fixtures generated from code and an independent Python
 project decoder. USB transfers are tested with a simulated device; these checks
 do not access hardware. Device projects and research artifacts are excluded
 from this repository.
+
+The [Pages workflow](.github/workflows/pages.yml) runs these checks and deploys
+the editor automatically on pushes to `main`. It can also be run manually from
+the repository's Actions tab.
 
 ## License
 

@@ -1,0 +1,55 @@
+name: Deploy editor to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Test editor
+        run: |
+          node --test project-editor/*.test.cjs
+          python3 -m unittest discover -s tests -v
+      - uses: actions/configure-pages@v5
+      - name: Prepare browser assets
+        run: |
+          mkdir _site
+          cp project-editor/*.html project-editor/*.js project-editor/*.css _site/
+          cp LICENSE _site/LICENSE.txt
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy editor
+        id: deployment
+        uses: actions/deploy-pages@v4
